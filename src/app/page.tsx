@@ -4,28 +4,55 @@ import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import Th from "./components/Th/Th";
 import { Advocate } from "@/app/types/types";
 import { sortArray } from "./utils/utils";
+import { useSearchParams, useRouter } from 'next/navigation';
 
 export default function Home() {
   const [advocates, setAdvocates] = useState<Advocate[]>([]);
   const [filteredAdvocates, setFilteredAdvocates] = useState<Advocate[]>([]);
   const [isFetching, setIsFetching] = useState<boolean>(true);
+  const [error, setError] = useState<Record<string, unknown>>();
+  const [pageSize, setPageSize] = useState<number>(25);
+  const [page, setPage] = useState<number>(1);
   const [sortConfig, setSortConfig] = useState<{ key:string; direction: string } | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
   const noResultsFound = 'No results match your search criteria.';
 
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+
   useEffect(() => {
     // TODO: Handle pagination && pageSize as api parameters
-    fetch("/api/advocates").then((response) => {
-      response.json().then((jsonResponse) => {
-        console.log(jsonResponse);
-        console.log(jsonResponse);
-        setAdvocates(jsonResponse.data);
-        setFilteredAdvocates(jsonResponse.data);
-        setIsFetching(false);
-      });
-    });
+    const getAdvocates = async () => {
+      try {
+        const params = new URLSearchParams();
+        params.append('pageSize', pageSize.toString());
+        params.append('page', page.toString());
+        const res = await fetch(`/api/advocates?${params.toString()}`);
+        if (!res.ok) {
+          // Handle error cases
+          // Add possible alert or snackbar future enhancement
+          throw new Error('Failed to fetch advocates.');
+        }
+        try {
+          const { data } = await res.json();
+          setAdvocates(data);
+          setFilteredAdvocates(data);
+        } catch(e: any) {
+          setError(e);
+        } finally {
+          setIsFetching(false);
+        }
+      } catch (e: any) {
+        setError(e);
+      }
+    }
+
+    getAdvocates();
   }, []);
+
+
 
   const sortedItems = useMemo(() => {
     let sortedAdvocates = [...filteredAdvocates];
@@ -144,7 +171,7 @@ export default function Home() {
         </thead>
         <tbody>
           {isFetching &&  <tr className="h-full px-4 py-4"><td>Loading...</td></tr>}
-          {filteredAdvocates.length > 0 &&
+          {sortedItems.length > 0 &&
             sortedItems.map((advocate, idx) => {
               return (
                 <tr className="h-auto" key={`${advocate.lastName}-${idx}`}>
