@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
+import { ChangeEvent, useEffect, useMemo, useRef, useState, FocusEvent } from "react";
 import Th from "./components/Th/Th";
 import { Advocate } from "@/app/types/types";
 import { sortArray } from "./utils/utils";
@@ -15,6 +15,7 @@ export default function Home() {
   const [page, setPage] = useState<number>(1);
   const [sortConfig, setSortConfig] = useState<{ key:string; direction: string } | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  const [shouldSearch, setShouldSearch] = useState<boolean>(false);
 
   const noResultsFound = 'No results match your search criteria.';
 
@@ -29,6 +30,8 @@ export default function Home() {
         const params = new URLSearchParams();
         params.append('pageSize', pageSize.toString());
         params.append('page', page.toString());
+        if (!!searchRef.current && searchRef.current?.value) params.append('searchText', searchRef.current.value);
+
         const res = await fetch(`/api/advocates?${params.toString()}`);
         if (!res.ok) {
           // Handle error cases
@@ -50,12 +53,13 @@ export default function Home() {
     }
 
     getAdvocates();
-  }, []);
+  }, [shouldSearch]);
 
 
 
   const sortedItems = useMemo(() => {
-    let sortedAdvocates = [...filteredAdvocates];
+    let sortedAdvocates: Advocate[] = []
+    if (!!filteredAdvocates) sortedAdvocates = [...filteredAdvocates];
     if (sortConfig !== null) {
       const {key , direction} = sortConfig;
       sortArray(sortedAdvocates, key as keyof Advocate, direction);
@@ -71,29 +75,32 @@ export default function Home() {
     setSortConfig({ key, direction });
   }
 
-  const onChange = (e: ChangeEvent<HTMLInputElement>) : void => {
-    const searchTerm = e.target.value.toLowerCase();
+  // const onChange = (e: ChangeEvent<HTMLInputElement>) : void => {
+  //   const searchTerm = e.target.value.toLowerCase();
+  //   const filteredAdvocates = advocates.filter((advocate) => {
+  //     return (
+  //       advocate.firstName.toLowerCase().includes(searchTerm) ||
+  //       advocate.lastName.toLowerCase().includes(searchTerm) ||
+  //       advocate.city.toLowerCase().includes(searchTerm) ||
+  //       advocate.degree.includes(searchTerm) ||
+  //       advocate.specialties.map((itm) => itm.toLowerCase()).join(',').replaceAll(',', ' ').includes(searchTerm) ||
+  //       advocate.yearsOfExperience.toString().includes(searchTerm) ||
+  //       advocate.phoneNumber.toString().includes(searchTerm)
+  //     );
+  //   });
 
-    const filteredAdvocates = advocates.filter((advocate) => {
-      return (
-        advocate.firstName.toLowerCase().includes(searchTerm) ||
-        advocate.lastName.toLowerCase().includes(searchTerm) ||
-        advocate.city.toLowerCase().includes(searchTerm) ||
-        advocate.degree.includes(searchTerm) ||
-        advocate.specialties.map((itm) => itm.toLowerCase()).join(',').replaceAll(',', ' ').includes(searchTerm) ||
-        advocate.yearsOfExperience.toString().includes(searchTerm) ||
-        advocate.phoneNumber.toString().includes(searchTerm)
-      );
-    });
-
-    setFilteredAdvocates(filteredAdvocates);
-  };
+  //   setFilteredAdvocates(filteredAdvocates);
+  // };
 
   const clearSearch = () : void => {
-    setFilteredAdvocates(advocates);
+    setShouldSearch(!shouldSearch);
     if (searchRef.current) {
       searchRef.current.value = ''
     }
+  };
+
+  const handleSearch = () => {
+    setShouldSearch(!shouldSearch);
   };
 
   const clearSort = () : void => {
@@ -107,7 +114,8 @@ export default function Home() {
       <br />
       <div>
         <label className="text-lg font-normal text-gray-500 dark:text-white mr-2">Search</label>
-        <input className="border border-black-500 px-4 py-2" ref={searchRef} onChange={onChange} disabled={isFetching} />
+        <input className="border border-black-500 px-4 py-2" ref={searchRef} disabled={isFetching} />
+        <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 m-5 rounded" onClick={handleSearch} disabled={isFetching}>Search</button>
         <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 m-5 rounded" onClick={clearSearch} disabled={isFetching}>Reset Search</button>
         {sortConfig !== null && <button className="bg-blue-500 hover:bg-blue-500 text-white font-bold py-2 px-4 m-5 rounded" onClick={clearSort} disabled={isFetching}>Clear Sort</button> }
       </div>
@@ -191,7 +199,7 @@ export default function Home() {
                 </tr>
               );
           })}
-          {!isFetching && filteredAdvocates.length === 0 && <tr className="h-full px-4 py-4"><td className="text-nowrap">{noResultsFound}</td></tr>}
+          {!isFetching && !!filteredAdvocates && filteredAdvocates?.length === 0 && <tr className="h-full px-4 py-4"><td className="text-nowrap">{noResultsFound}</td></tr>}
         </tbody>
       </table>
     </main>
