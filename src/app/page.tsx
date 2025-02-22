@@ -1,34 +1,30 @@
 "use client";
 
-import { ChangeEvent, useEffect, useMemo, useRef, useState, FocusEvent } from "react";
+import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import Th from "./components/Th/Th";
+import TableFooter from "./components/TableFooter/TableFooter";
 import { Advocate } from "@/app/types/types";
 import { sortArray } from "./utils/utils";
-import { useSearchParams, useRouter } from 'next/navigation';
 
 export default function Home() {
-  const [advocates, setAdvocates] = useState<Advocate[]>([]);
+  const PAGE_SIZE_OPTS = [5, 10, 25, 50];
   const [filteredAdvocates, setFilteredAdvocates] = useState<Advocate[]>([]);
   const [isFetching, setIsFetching] = useState<boolean>(true);
   const [error, setError] = useState<Record<string, unknown>>();
-  const [pageSize, setPageSize] = useState<number>(25);
   const [page, setPage] = useState<number>(1);
   const [sortConfig, setSortConfig] = useState<{ key:string; direction: string } | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const [shouldSearch, setShouldSearch] = useState<boolean>(false);
+  const [selectedPageSize, setSelectedPageSize] = useState<number>(PAGE_SIZE_OPTS[0]);
+  const [totalPages, setTotalPages] = useState<number | null>(null);
 
   const noResultsFound = 'No results match your search criteria.';
 
-  const searchParams = useSearchParams();
-  const router = useRouter();
-
-
   useEffect(() => {
-    // TODO: Handle pagination && pageSize as api parameters
     const getAdvocates = async () => {
       try {
         const params = new URLSearchParams();
-        params.append('pageSize', pageSize.toString());
+        params.append('pageSize', selectedPageSize.toString());
         params.append('page', page.toString());
         if (!!searchRef.current && searchRef.current?.value) params.append('searchText', searchRef.current.value);
 
@@ -39,8 +35,14 @@ export default function Home() {
           throw new Error('Failed to fetch advocates.');
         }
         try {
-          const { data } = await res.json();
-          setAdvocates(data);
+          const { data, totalCount } = await res.json();
+          const initPageCalc = totalCount[0].count / selectedPageSize
+          if (initPageCalc < 1) {
+            setTotalPages(1);
+          } else {
+            setTotalPages(Math.ceil(initPageCalc));
+          }
+
           setFilteredAdvocates(data);
         } catch(e: any) {
           setError(e);
@@ -55,7 +57,26 @@ export default function Home() {
     getAdvocates();
   }, [shouldSearch]);
 
+  const nextPage = () => {
+   if (page === totalPages) return;
 
+   setPage(page + 1);
+   setShouldSearch(!shouldSearch);
+  };
+
+  const prevPage = () => {
+    if (page === 1) return;
+
+    setPage(page - 1);
+    setShouldSearch(!shouldSearch);
+  };
+
+  const handlePageSize = (e: ChangeEvent<HTMLSelectElement>) => {
+    if (selectedPageSize === Number(e.target.value)) return;
+
+    setSelectedPageSize(Number(e.target.value));
+    setShouldSearch(!shouldSearch);
+  }
 
   const sortedItems = useMemo(() => {
     let sortedAdvocates: Advocate[] = []
@@ -74,23 +95,6 @@ export default function Home() {
     }
     setSortConfig({ key, direction });
   }
-
-  // const onChange = (e: ChangeEvent<HTMLInputElement>) : void => {
-  //   const searchTerm = e.target.value.toLowerCase();
-  //   const filteredAdvocates = advocates.filter((advocate) => {
-  //     return (
-  //       advocate.firstName.toLowerCase().includes(searchTerm) ||
-  //       advocate.lastName.toLowerCase().includes(searchTerm) ||
-  //       advocate.city.toLowerCase().includes(searchTerm) ||
-  //       advocate.degree.includes(searchTerm) ||
-  //       advocate.specialties.map((itm) => itm.toLowerCase()).join(',').replaceAll(',', ' ').includes(searchTerm) ||
-  //       advocate.yearsOfExperience.toString().includes(searchTerm) ||
-  //       advocate.phoneNumber.toString().includes(searchTerm)
-  //     );
-  //   });
-
-  //   setFilteredAdvocates(filteredAdvocates);
-  // };
 
   const clearSearch = () : void => {
     setShouldSearch(!shouldSearch);
@@ -119,10 +123,6 @@ export default function Home() {
         <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 m-5 rounded" onClick={clearSearch} disabled={isFetching}>Reset Search</button>
         {sortConfig !== null && <button className="bg-blue-500 hover:bg-blue-500 text-white font-bold py-2 px-4 m-5 rounded" onClick={clearSort} disabled={isFetching}>Clear Sort</button> }
       </div>
-      <p className="text-sm font-normal text-gray-500 ">
-        Searching for: <span>{!!searchRef.current ? searchRef.current?.value : ''}</span>
-      </p>
-      <br />
       <br />
       <table className="table-fixed w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
         <thead className="bg-blue-500 text-white">
@@ -202,6 +202,7 @@ export default function Home() {
           {!isFetching && !!filteredAdvocates && filteredAdvocates?.length === 0 && <tr className="h-full px-4 py-4"><td className="text-nowrap">{noResultsFound}</td></tr>}
         </tbody>
       </table>
+      <TableFooter pageSizeOpts={PAGE_SIZE_OPTS} totalPages={totalPages} currentPageSize={selectedPageSize} currentPage={page} handlePageSize={handlePageSize} nextPage={nextPage} prevPage={prevPage} />
     </main>
   );
 }

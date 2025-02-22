@@ -3,15 +3,21 @@
 import Image from 'next/image'
 import upArrow from  '../../../../public/up-arrow.png';
 import downArrow from  '../../../../public/down-arrow.png';
+import { FC } from 'react';
 
-interface Th {
+interface ThProps {
     sortConfig: { key: string; direction: string; } | null,
     text: string;
     onSort(label: string): void,
     label: string
 }
 
-export default function Th({ label, text, onSort, sortConfig }: Th) {
+const Th: FC<ThProps> = ({
+    label,
+    text,
+    onSort,
+    sortConfig
+  }) => {
     return (
         <th className="border border-gray-300 p-4">
             <button type="button" onClick={() => onSort(label)}>{text}</button>
@@ -27,3 +33,4 @@ export default function Th({ label, text, onSort, sortConfig }: Th) {
         </th>
     )
 }
+export default Th;
