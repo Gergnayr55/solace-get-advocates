@@ -75,6 +75,7 @@ export default function Home() {
     if (selectedPageSize === Number(e.target.value)) return;
 
     setSelectedPageSize(Number(e.target.value));
+    setPage(1);
     setShouldSearch(!shouldSearch);
   }
 
