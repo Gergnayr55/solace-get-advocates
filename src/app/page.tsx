@@ -98,6 +98,8 @@ export default function Home() {
   }
 
   const clearSearch = () : void => {
+    if (searchRef.current && searchRef.current.value?.length === 0 ) return;
+
     setShouldSearch(!shouldSearch);
     if (searchRef.current) {
       searchRef.current.value = ''
@@ -105,6 +107,8 @@ export default function Home() {
   };
 
   const handleSearch = () => {
+    if (searchRef.current && searchRef.current.value?.length === 0 ) return;
+
     setShouldSearch(!shouldSearch);
   };
 
